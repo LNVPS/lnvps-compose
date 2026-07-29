@@ -1,4 +1,5 @@
 import { parse as parseYaml } from "yaml";
+import { validateCompose } from "./validate.js";
 import { DEFAULT_CPU, DEFAULT_EXPOSE, DEFAULT_FIELD_TYPE, DEFAULT_GENERATE, DEFAULT_MEMORY, DEFAULT_PROTOCOL, FIELD_TYPE_VALUES, GENERATE_VALUES, } from "./types.js";
 /**
  * Parse an app compose document from YAML into its typed shape.
@@ -13,7 +14,11 @@ import { DEFAULT_CPU, DEFAULT_EXPOSE, DEFAULT_FIELD_TYPE, DEFAULT_GENERATE, DEFA
  * (see `work/lnvps-compose-v1.md`). A document this function accepts can
  * still be rejected by the real API.
  *
- * Throws with a message naming the offending path on any shape mismatch.
+ * Throws with a message naming the offending path on any shape mismatch, and
+ * then runs {@link validateCompose} — the business rules the structural pass
+ * above does not check (expose/protocol combinations, path bounds/overlap,
+ * `depends_on` references, secret byte ranges, config pattern compilation,
+ * and so on).
  */
 export function parseCompose(yaml) {
     let doc;
@@ -23,7 +28,9 @@ export function parseCompose(yaml) {
     catch (err) {
         throw new Error(`invalid compose YAML: ${err.message}`);
     }
-    return readCompose(doc, "compose");
+    const compose = readCompose(doc, "compose");
+    validateCompose(compose);
+    return compose;
 }
 function fail(ctx, message) {
     throw new Error(`${ctx}: ${message}`);

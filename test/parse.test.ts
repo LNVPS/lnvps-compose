@@ -59,7 +59,7 @@ services:
   });
 
   test("rejects a document with no services", () => {
-    expect(() => parseCompose(`services: {}`)).not.toThrow();
+    expect(() => parseCompose(`services: {}`)).toThrow(/at least one service/);
     expect(() => parseCompose(`config: []`)).toThrow();
   });
 

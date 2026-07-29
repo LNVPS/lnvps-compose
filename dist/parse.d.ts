@@ -12,6 +12,10 @@ import type { Compose } from "./types.js";
  * (see `work/lnvps-compose-v1.md`). A document this function accepts can
  * still be rejected by the real API.
  *
- * Throws with a message naming the offending path on any shape mismatch.
+ * Throws with a message naming the offending path on any shape mismatch, and
+ * then runs {@link validateCompose} — the business rules the structural pass
+ * above does not check (expose/protocol combinations, path bounds/overlap,
+ * `depends_on` references, secret byte ranges, config pattern compilation,
+ * and so on).
  */
 export declare function parseCompose(yaml: string): Compose;

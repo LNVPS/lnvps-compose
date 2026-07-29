@@ -2,7 +2,7 @@
 
 **Status:** in-progress
 **Started:** 2026-07-29
-**Last updated:** 2026-07-29 (dist/ commit)
+**Last updated:** 2026-07-29 (validate() ported, pending commit approval)
 
 ## Goal
 
@@ -79,11 +79,33 @@ operator's own rendering produce the same number for the same compose.
       `LNVPS/api`'s `docs/managed-app-examples.md`) parsed and its footprint
       asserted; quantity edge cases; structural-parse error cases; 100%
       function coverage (`bun test --coverage`).
-- [ ] Tag `v0.1.0` once this PR is reviewed.
-- [ ] Port `Compose::validate()` (the business rules listed above) as
-      `parseCompose`'s second pass, or a separate `validateCompose` — decide
-      which when picking this up. Own PR; this is the largest remaining
-      increment.
+- [x] Tag `v0.1.0` once this PR is reviewed. (Also `v0.1.1`/`v0.1.2` since,
+      per the `dist/` commit decision below.)
+- [x] Port `Compose::validate()` as a separate `validateCompose` function
+      (`src/validate.ts`), called from `parseCompose`'s strict pass only.
+      Same rule set as the Rust source (expose/protocol, volume label
+      length, scratch bounds/overlap, `depends_on`, file content-source/
+      overlap, backup command|volume, init name/image/injection/user, secret
+      byte range, config pattern compilation), same error shape/messages
+      where practical. `MAX_VOLUME_LABEL_LEN`/`MAX_SCRATCH_BYTES`/
+      `MIN_SECRET_BYTES`/`MAX_SECRET_BYTES`/`MAX_PATTERN_LEN` exported from
+      `types.ts` (mirrors the Rust consts' `pub` visibility); `MAX_FILE_BYTES`
+      and the path/regex/user helpers stay module-private (mirrors the Rust
+      side's non-`pub` items). 61 new tests in `test/validate.test.ts`
+      (100% function coverage); updated `parse.test.ts`'s "no services" case,
+      which the structural-only parser previously accepted. Branch
+      `feat/validate-business-rules`, worktree `work/validate-business-rules`.
+      Not yet committed — `agents/common.md` requires asking before
+      committing; see channel for the ask.
+      One porting note: `label.chars().count()` (Rust) became `[...l].length`
+      (codepoint count, not UTF-16 length) for the volume label bound;
+      `.len()` (byte count) on the pattern/file-content/init-name bounds
+      became a hand-rolled `utf8ByteLength` rather than `TextEncoder`, since
+      `tsconfig.build.json` compiles with no ambient `types` and doesn't see
+      it. `compile_pattern`'s regex-compiles check uses JS `RegExp` rather
+      than reproducing the Rust `regex` crate's engine — practical parity
+      (catches an author's non-compiling pattern), not a byte-for-byte
+      engine match.
 - [ ] `LNVPS/web`: replace `src/utils/app-compose.ts` (`parseAppConfig`,
       `defaultConfigValues`) with `lnvps-compose`'s `parseComposeSchema` +
       `configFieldDisplayLabel`. Own PR.

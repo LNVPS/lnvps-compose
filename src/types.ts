@@ -145,6 +145,9 @@ export interface Volume {
   label?: string;
 }
 
+/** Longest accepted volume label, in characters (issue LNVPS/api#260). */
+export const MAX_VOLUME_LABEL_LEN = 40;
+
 /** A writable throwaway path inside a service's container → one `emptyDir`. */
 export interface Scratch {
   /** Absolute mount path inside the container. */
@@ -157,6 +160,11 @@ export interface Scratch {
 /** Size of a `scratch:` path that does not declare one. */
 export const DEFAULT_SCRATCH_SIZE = "256Mi";
 
+/** Largest accepted `scratch:` size in bytes (1 GiB). Node-local disk is
+ * shared with every other tenant on the node — anything bigger belongs in a
+ * `volume`, where it is sized, billed and backed up. */
+export const MAX_SCRATCH_BYTES = 1024 * 1024 * 1024;
+
 /** Declared size, or {@link DEFAULT_SCRATCH_SIZE}. */
 export function scratchSizeOrDefault(s: Scratch): string {
   return s.size ?? DEFAULT_SCRATCH_SIZE;
@@ -164,6 +172,9 @@ export function scratchSizeOrDefault(s: Scratch): string {
 
 /** Default generated-secret length in bytes. Hex-encoded, so 48 characters. */
 export const DEFAULT_SECRET_BYTES = 24;
+/** Accepted range for an explicitly declared secret length. */
+export const MIN_SECRET_BYTES = 16;
+export const MAX_SECRET_BYTES = 64;
 
 /** An operator-generated secret. */
 export interface SecretDecl {
@@ -199,6 +210,11 @@ export interface ConfigField {
   /** Regex the submitted value must match in full (issue LNVPS/api#271). */
   pattern?: string;
 }
+
+/** Longest accepted `pattern`, in bytes. Long enough for the character-class
+ * patterns a catalog field needs (an npub, a domain, a hex key) and short
+ * enough that the admin API is not a place to paste a program. */
+export const MAX_PATTERN_LEN = 200;
 
 /** The label a customer sees, falling back to the field name. */
 export function configFieldDisplayLabel(f: ConfigField): string {
