@@ -2,7 +2,7 @@
 
 **Status:** in-progress
 **Started:** 2026-07-29
-**Last updated:** 2026-07-29 (validate() ported, pending commit approval)
+**Last updated:** 2026-07-29 (validate() ported and shipped as LNVPS/lnvps-compose#2)
 
 ## Goal
 
@@ -95,8 +95,15 @@ operator's own rendering produce the same number for the same compose.
       (100% function coverage); updated `parse.test.ts`'s "no services" case,
       which the structural-only parser previously accepted. Branch
       `feat/validate-business-rules`, worktree `work/validate-business-rules`.
-      Not yet committed — `agents/common.md` requires asking before
-      committing; see channel for the ask.
+      Committed `62b8b73`, PR https://github.com/LNVPS/lnvps-compose/pull/2.
+      Review (Goran) found two real Rust-parity gaps, fixed in a follow-up
+      commit on the same branch: `userUid` had no upper bound (a uid string
+      overflowing Rust's i64 parsed to the nearest float and was accepted;
+      Rust's `parse::<i64>()` overflow is `Err` → `None` → rejected — now
+      gated on `Number.isSafeInteger`), and `compilePattern` accepted
+      backreferences/lookaround/named-groups that compile in JS `RegExp` but
+      not in the backtracking-free Rust `regex` crate (now rejected by
+      substring check before the `RegExp` compile attempt).
       One porting note: `label.chars().count()` (Rust) became `[...l].length`
       (codepoint count, not UTF-16 length) for the volume label bound;
       `.len()` (byte count) on the pattern/file-content/init-name bounds

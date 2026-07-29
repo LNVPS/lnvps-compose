@@ -226,7 +226,10 @@ function userUid(user) {
     if (!/^[+-]?\d+$/.test(user))
         return undefined;
     const uid = Number.parseInt(user, 10);
-    return uid > 0 ? uid : undefined;
+    // Rust parses into an i64 and treats overflow as "not a uid" (`Err` falls
+    // through to `None`), rather than the closest representable value — a
+    // digit string this long is never a real UID, so reject it the same way.
+    return uid > 0 && Number.isSafeInteger(uid) ? uid : undefined;
 }
 /** Validate an in-container path: absolute, not root, no `..` traversal. */
 function checkAbsNoTraversal(service, label, path) {
@@ -279,17 +282,20 @@ function extractRefs(s) {
     return out;
 }
 /**
- * Check a `pattern` compiles as a fully-anchored regex.
+ * Check a `pattern` compiles as a fully-anchored regex, the same as the Rust
+ * `regex` crate would.
  *
  * Anchoring is not the author's job: `npub1…` without `^…$` silently accepts
  * a value with junk on either end, and that is exactly the mistake that
  * produces a crashlooping deployment. The pattern is wrapped rather than
  * rewritten, so an author's own `^`/`$` stay valid and mean the same thing.
  *
- * Uses JS `RegExp` rather than reproducing Rust's `regex` crate: both accept
- * the character-class/anchor patterns this field is for, and a byte-for-byte
- * regex-engine match is not practical here — the goal is catching an author's
- * pattern that does not compile, not emulating a different regex engine.
+ * Uses JS `RegExp`, not Rust's `regex` crate, so the two engines' feature
+ * sets have to be reconciled by hand rather than by construction: `regex`
+ * guarantees linear-time matching by supporting neither backreferences nor
+ * lookaround, so a pattern using either compiles here but would fail at the
+ * admin API — rejected explicitly, below, so a pattern this function accepts
+ * is one the admin API accepts too.
  */
 function compilePattern(pattern) {
     if (pattern.trim().length === 0) {
@@ -297,6 +303,12 @@ function compilePattern(pattern) {
     }
     if (utf8ByteLength(pattern) > MAX_PATTERN_LEN) {
         throw new Error(`pattern must be at most ${MAX_PATTERN_LEN} characters`);
+    }
+    if (/\\[0-9]/.test(pattern)) {
+        throw new Error(`pattern '${pattern}' is not a valid regex: backreferences are not supported`);
+    }
+    if (pattern.includes("(?=") || pattern.includes("(?!") || pattern.includes("(?<")) {
+        throw new Error(`pattern '${pattern}' is not a valid regex: lookaround and named groups are not supported`);
     }
     try {
         new RegExp(`^(?:${pattern})$`);

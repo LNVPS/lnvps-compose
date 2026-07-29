@@ -108,6 +108,17 @@ services:
 `),
     ).not.toThrow();
   });
+
+  test("rejects a uid that overflows Rust's i64, not just accepts the nearest float", () => {
+    expect(() =>
+      parseCompose(`
+services:
+  a:
+    image: x
+    user: "99999999999999999999"
+`),
+    ).toThrow("numeric UID");
+  });
 });
 
 describe("validateCompose: volumes", () => {
@@ -673,5 +684,41 @@ config:
   - { name: owner_npub, type: string, pattern: "npub1[02-9ac-hj-np-z]{58}" }
 `),
     ).not.toThrow();
+  });
+
+  test("rejects a backreference, which the Rust regex engine cannot compile", () => {
+    expect(() =>
+      parseCompose(`
+services:
+  a:
+    image: x
+config:
+  - { name: o, type: string, pattern: '(a)\\1' }
+`),
+    ).toThrow("backreferences");
+  });
+
+  test("rejects lookaround, which the Rust regex engine cannot compile", () => {
+    expect(() =>
+      parseCompose(`
+services:
+  a:
+    image: x
+config:
+  - { name: o, type: string, pattern: "(?=a)b" }
+`),
+    ).toThrow("lookaround");
+  });
+
+  test("rejects a named group, which the Rust regex engine spells differently", () => {
+    expect(() =>
+      parseCompose(`
+services:
+  a:
+    image: x
+config:
+  - { name: o, type: string, pattern: "(?<year>[0-9]{4})" }
+`),
+    ).toThrow("lookaround");
   });
 });
