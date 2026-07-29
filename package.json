@@ -13,14 +13,12 @@
       "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "prepare": "bun run build",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "verify-dist": "bun run build && git diff --exit-code -- dist"
   },
   "dependencies": {
     "yaml": "^2.9.0"

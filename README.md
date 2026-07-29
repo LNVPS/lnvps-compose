@@ -26,9 +26,14 @@ No package registry — installed as a git dependency:
 }
 ```
 
-`bun install` (or `npm install`) runs this package's own `prepare` script on
-install, which builds `dist/` from `src/`, so a consumer gets compiled JS and
-`.d.ts` files without needing to run this package's own toolchain.
+`dist/` is committed, built from `src/` — git-dependency installs are
+inconsistent about running a package's own build script (bun blocks the
+`prepare` script for git deps unless the consumer opts in with
+`trustedDependencies`; Yarn Berry's git fetch has been observed keeping only
+`package.json`/`README.md` of the checkout, `src/` included, independent of
+whether scripts run at all). Shipping the built output directly needs no
+cooperation from either. `bun run verify-dist` in CI fails the build if
+`dist/` doesn't match `src/`, so this can't drift silently.
 
 ## API
 
@@ -84,3 +89,7 @@ bun run typecheck
 bun test
 bun run build
 ```
+
+`dist/` is committed (see Install, above) — run `bun run build` and commit
+the result alongside any `src/` change. `bun run verify-dist` (also CI) fails
+if they've drifted.
