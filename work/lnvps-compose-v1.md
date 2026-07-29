@@ -2,7 +2,7 @@
 
 **Status:** in-progress
 **Started:** 2026-07-29
-**Last updated:** 2026-07-29 (validate() ported and shipped as LNVPS/lnvps-compose#2)
+**Last updated:** 2026-07-29 (validate() ported and shipped as LNVPS/lnvps-compose#2, two review rounds)
 
 ## Goal
 
@@ -101,9 +101,20 @@ operator's own rendering produce the same number for the same compose.
       overflowing Rust's i64 parsed to the nearest float and was accepted;
       Rust's `parse::<i64>()` overflow is `Err` → `None` → rejected — now
       gated on `Number.isSafeInteger`), and `compilePattern` accepted
-      backreferences/lookaround/named-groups that compile in JS `RegExp` but
-      not in the backtracking-free Rust `regex` crate (now rejected by
-      substring check before the `RegExp` compile attempt).
+      backreferences/lookaround that compile in JS `RegExp` but not in the
+      backtracking-free Rust `regex` crate (rejected by substring/escape-aware
+      check before the `RegExp` compile attempt). Second review round
+      (verified against the pinned `regex-syntax 0.8.11` source in
+      `~/.cargo/registry`, not just the review comment) found the first pass
+      of that fix over-rejected: `regex` has supported `(?<name>…)` named
+      groups since 1.9 (`ast/parse.rs`'s `parse_group` takes `?P<` and `?<`
+      on the same branch) — only `(?<=…)`/`(?<!…)` are lookbehind
+      (`is_lookaround_prefix`), so the check now matches those two spellings,
+      not the bare `(?<` prefix. The backreference scan also flagged an
+      escaped literal backslash (`\\1` — escaped-backslash-then-digit, two
+      tokens, not one) as if it were a backreference (`\1`, one token);
+      `hasUnescapedBackreference` now walks escape pairs instead of scanning
+      for backslash-next-to-digit.
       One porting note: `label.chars().count()` (Rust) became `[...l].length`
       (codepoint count, not UTF-16 length) for the volume label bound;
       `.len()` (byte count) on the pattern/file-content/init-name bounds

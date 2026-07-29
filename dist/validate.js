@@ -293,9 +293,10 @@ function extractRefs(s) {
  * Uses JS `RegExp`, not Rust's `regex` crate, so the two engines' feature
  * sets have to be reconciled by hand rather than by construction: `regex`
  * guarantees linear-time matching by supporting neither backreferences nor
- * lookaround, so a pattern using either compiles here but would fail at the
- * admin API — rejected explicitly, below, so a pattern this function accepts
- * is one the admin API accepts too.
+ * lookaround (named groups, `(?<name>…)`, are fine — only the lookaround
+ * spelling `(?<=…)`/`(?<!…)` collides with that prefix), so a pattern using
+ * either compiles here but would fail at the admin API — rejected explicitly,
+ * below, so a pattern this function accepts is one the admin API accepts too.
  */
 function compilePattern(pattern) {
     if (pattern.trim().length === 0) {
@@ -304,11 +305,14 @@ function compilePattern(pattern) {
     if (utf8ByteLength(pattern) > MAX_PATTERN_LEN) {
         throw new Error(`pattern must be at most ${MAX_PATTERN_LEN} characters`);
     }
-    if (/\\[0-9]/.test(pattern)) {
+    if (hasUnescapedBackreference(pattern)) {
         throw new Error(`pattern '${pattern}' is not a valid regex: backreferences are not supported`);
     }
-    if (pattern.includes("(?=") || pattern.includes("(?!") || pattern.includes("(?<")) {
-        throw new Error(`pattern '${pattern}' is not a valid regex: lookaround and named groups are not supported`);
+    if (pattern.includes("(?=") ||
+        pattern.includes("(?!") ||
+        pattern.includes("(?<=") ||
+        pattern.includes("(?<!")) {
+        throw new Error(`pattern '${pattern}' is not a valid regex: lookaround is not supported`);
     }
     try {
         new RegExp(`^(?:${pattern})$`);
@@ -316,6 +320,23 @@ function compilePattern(pattern) {
     catch (e) {
         throw new Error(`pattern '${pattern}' is not a valid regex: ${e.message}`);
     }
+}
+/**
+ * Whether `pattern` contains a `\` escape whose target is a digit (`\0`–
+ * `\9`) — a backreference, or (with octal parsing off, the `regex` crate's
+ * default) an error either way. Walks escape pairs rather than scanning for
+ * `\` next to a digit directly: an escaped backslash (`\\`) followed by a
+ * literal `1` is two tokens, not one, and compiles fine.
+ */
+function hasUnescapedBackreference(pattern) {
+    for (let i = 0; i < pattern.length; i++) {
+        if (pattern[i] === "\\") {
+            if (/[0-9]/.test(pattern[i + 1] ?? ""))
+                return true;
+            i++; // the escaped character is consumed with the backslash, whatever it is
+        }
+    }
+    return false;
 }
 /**
  * UTF-8 byte length of a string, matching Rust's `str::len()` (bytes, not

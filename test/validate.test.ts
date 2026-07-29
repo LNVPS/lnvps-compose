@@ -698,7 +698,22 @@ config:
     ).toThrow("backreferences");
   });
 
-  test("rejects lookaround, which the Rust regex engine cannot compile", () => {
+  test("accepts an escaped backslash followed by a digit, which is not a backreference", () => {
+    // `\\1` in the pattern text is `\\` (an escaped, literal backslash) then
+    // `1` — two tokens, not the backreference `\1`. The `regex` crate compiles
+    // this; a naive "backslash next to a digit" scan would reject it.
+    expect(() =>
+      parseCompose(`
+services:
+  a:
+    image: x
+config:
+  - { name: o, type: string, pattern: 'a\\\\1b' }
+`),
+    ).not.toThrow();
+  });
+
+  test("rejects lookahead, which the Rust regex engine cannot compile", () => {
     expect(() =>
       parseCompose(`
 services:
@@ -710,7 +725,19 @@ config:
     ).toThrow("lookaround");
   });
 
-  test("rejects a named group, which the Rust regex engine spells differently", () => {
+  test("rejects lookbehind, which the Rust regex engine cannot compile", () => {
+    expect(() =>
+      parseCompose(`
+services:
+  a:
+    image: x
+config:
+  - { name: o, type: string, pattern: "(?<=a)b" }
+`),
+    ).toThrow("lookaround");
+  });
+
+  test("accepts a named group, which the Rust regex engine also supports", () => {
     expect(() =>
       parseCompose(`
 services:
@@ -719,6 +746,6 @@ services:
 config:
   - { name: o, type: string, pattern: "(?<year>[0-9]{4})" }
 `),
-    ).toThrow("lookaround");
+    ).not.toThrow();
   });
 });
