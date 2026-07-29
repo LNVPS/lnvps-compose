@@ -2,7 +2,7 @@
 
 **Status:** in-progress
 **Started:** 2026-07-29
-**Last updated:** 2026-07-29
+**Last updated:** 2026-07-29 (dist/ commit)
 
 ## Goal
 
@@ -42,7 +42,20 @@ operator's own rendering produce the same number for the same compose.
 - No existing private npm registry or npm-workspace linking `web`/`admin`/
   `api` — this package installs as a git dependency
   (`"lnvps-compose": "github:LNVPS/lnvps-compose#<tag>"`), no publish
-  credentials needed. Its own `prepare` script builds `dist/` on install.
+  credentials needed.
+- Git-dependency installs cannot be trusted to run this package's own build
+  step, and the failure differs by package manager rather than repeating:
+  bun blocks `prepare` for git deps unless the consumer opts in with
+  `trustedDependencies` (web#88) — the checkout is otherwise complete, only
+  the script is refused. Wiring this into `LNVPS/admin` (Yarn Berry, PnP)
+  surfaced a second, worse failure: the fetched package kept only
+  `package.json`/`README.md` — `src/` itself never arrived, independent of
+  script permissions, so there was nothing to build from either way. `dist/`
+  is now committed (`f78e3ba`/`v0.1.1`) so a consumer gets working output
+  from the git checkout regardless of what its package manager does with
+  lifecycle scripts. `bun run verify-dist` (CI) fails if `src/` and the
+  committed `dist/` disagree — rebuild and commit `dist/` with any `src/`
+  change.
 - This is XL by `agents/common.md`'s own sizing rule (types + strict parse +
   full `validate()` + two repo integrations is well over 750 lines), hence
   this file.
