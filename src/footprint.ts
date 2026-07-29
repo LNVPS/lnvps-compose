@@ -85,12 +85,20 @@ export function parseComposeFootprint(yaml: string): ComposeFootprintResult {
       const initSteps = Array.isArray(svc.init) ? svc.init : [];
       for (const raw of initSteps) {
         const init = (typeof raw === "object" && raw !== null ? raw : {}) as {
-          resources?: { cpu?: unknown; memory?: unknown };
+          resources?: { cpu?: unknown; memory?: unknown } | null;
         };
-        cpu_milli = Math.max(cpu_milli, cpuOrZero(init.resources?.cpu, INIT_DEFAULT_CPU));
+        // Rust: `init.resources` is `Option<Resources>`. Absent entirely,
+        // the whole struct defaults to the init-specific 50m/64Mi; present,
+        // a field missing *within* it takes the regular per-field Resources
+        // default (250m/256Mi) — the same default a service's own
+        // `resources:` gets, not the init default a second time.
+        const hasResources = init.resources !== undefined && init.resources !== null;
+        const cpuFallback = hasResources ? DEFAULT_CPU : INIT_DEFAULT_CPU;
+        const memoryFallback = hasResources ? DEFAULT_MEMORY : INIT_DEFAULT_MEMORY;
+        cpu_milli = Math.max(cpu_milli, cpuOrZero(init.resources?.cpu, cpuFallback));
         memory_bytes = Math.max(
           memory_bytes,
-          bytesOrZero(init.resources?.memory, INIT_DEFAULT_MEMORY),
+          bytesOrZero(init.resources?.memory, memoryFallback),
         );
       }
 
@@ -102,7 +110,10 @@ export function parseComposeFootprint(yaml: string): ComposeFootprintResult {
 
       return { name, cpu_milli, memory_bytes, storage_bytes };
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    // Rust's `Ord` for `String` is byte order, not locale collation — this
+    // must sort the same way `service_footprints` does, uppercase before
+    // lowercase, not `localeCompare`'s dictionary order.
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
   const total = perService.reduce<Footprint>(
     (acc, s) => ({

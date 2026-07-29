@@ -23,6 +23,8 @@ import {
   DEFAULT_GENERATE,
   DEFAULT_MEMORY,
   DEFAULT_PROTOCOL,
+  FIELD_TYPE_VALUES,
+  GENERATE_VALUES,
 } from "./types.js";
 
 /**
@@ -238,8 +240,6 @@ function readScratch(raw: unknown, ctx: string): Scratch {
   };
 }
 
-const GENERATE_VALUES = ["password", "token"] as const;
-
 function readSecretDecl(raw: unknown, ctx: string): SecretDecl {
   const obj = asObject(raw, ctx);
   return {
@@ -248,8 +248,6 @@ function readSecretDecl(raw: unknown, ctx: string): SecretDecl {
     bytes: optNumber(obj, "bytes", ctx),
   };
 }
-
-const FIELD_TYPE_VALUES = ["string", "int", "bool", "file"] as const;
 
 function readConfigField(raw: unknown, ctx: string): ConfigField {
   const obj = asObject(raw, ctx);

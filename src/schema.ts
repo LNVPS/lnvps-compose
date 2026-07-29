@@ -1,17 +1,21 @@
 import { parse as parseYaml } from "yaml";
-import type { ConfigField, FieldType, Generate, SecretDecl } from "./types.js";
+import {
+  FIELD_TYPE_VALUES,
+  GENERATE_VALUES,
+  type ConfigField,
+  type FieldType,
+  type Generate,
+  type SecretDecl,
+} from "./types.js";
 
 export interface ComposeSchema {
   config: Array<ConfigField>;
   secrets: Array<SecretDecl>;
 }
 
-const FIELD_TYPES: ReadonlyArray<FieldType> = ["string", "int", "bool", "file"];
-const GENERATE_VALUES: ReadonlyArray<Generate> = ["password", "token"];
-
 function asFieldType(value: unknown): FieldType {
   const t = typeof value === "string" ? value.toLowerCase() : "";
-  return (FIELD_TYPES as ReadonlyArray<string>).includes(t) ? (t as FieldType) : "string";
+  return (FIELD_TYPE_VALUES as ReadonlyArray<string>).includes(t) ? (t as FieldType) : "string";
 }
 
 function asGenerate(value: unknown): Generate {

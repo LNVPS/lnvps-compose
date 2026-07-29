@@ -66,6 +66,46 @@ services:
     expect(large.total.memory_bytes).toBe(1024 * 1024 * 1024);
   });
 
+  test("a partial init resources block fills the missing field from the service default, not the init default", () => {
+    // Goran's repro: service well under the init default on both fields, init
+    // declares only cpu. The missing memory must take the regular 256Mi
+    // service-level default, not the init-specific 64Mi one, because
+    // `init.resources` is present as a struct even though one of its fields
+    // is not.
+    const { total } = parseComposeFootprint(`
+services:
+  app:
+    image: example/app
+    resources: { cpu: 100m, memory: 128Mi }
+    init:
+      - { name: setup, image: example/setup, resources: { cpu: 200m } }
+`);
+    expect(total.cpu_milli).toBe(200);
+    expect(total.memory_bytes).toBe(256 * 1024 * 1024);
+  });
+
+  test("an init step with no resources block at all uses the init defaults, not the service's", () => {
+    const { total } = parseComposeFootprint(`
+services:
+  app:
+    image: example/app
+    resources: { cpu: 10m, memory: 10Mi }
+    init:
+      - { name: setup, image: example/setup }
+`);
+    expect(total.cpu_milli).toBe(50);
+    expect(total.memory_bytes).toBe(64 * 1024 * 1024);
+  });
+
+  test("sorts services in byte order, not locale collation", () => {
+    const { services } = parseComposeFootprint(`
+services:
+  B: { image: example/b }
+  a: { image: example/a }
+`);
+    expect(services.map((s) => s.name)).toEqual(["B", "a"]);
+  });
+
   test("unquoted numeric quantities are coerced, matching how YAML parses them", () => {
     const { services } = parseComposeFootprint(`
 services:

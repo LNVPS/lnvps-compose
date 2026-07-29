@@ -60,4 +60,13 @@ describe("parseQuantityBytes", () => {
   test("rejects garbage", () => {
     expect(() => parseQuantityBytes("abc")).toThrow("invalid size");
   });
+
+  test("rejects a quantity that overflows a safe integer, rather than losing precision", () => {
+    expect(() => parseQuantityBytes("9007199254740993")).toThrow("overflows");
+    expect(() => parseQuantityBytes("9007199254740" + "T")).toThrow("overflows");
+  });
+
+  test("accepts a quantity right at the safe integer boundary", () => {
+    expect(parseQuantityBytes("9007199254740991")).toBe(Number.MAX_SAFE_INTEGER);
+  });
 });

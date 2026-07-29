@@ -145,9 +145,6 @@ export interface Volume {
   label?: string;
 }
 
-/** Longest accepted volume label. */
-export const MAX_VOLUME_LABEL_LEN = 40;
-
 /** A writable throwaway path inside a service's container → one `emptyDir`. */
 export interface Scratch {
   /** Absolute mount path inside the container. */
@@ -159,8 +156,6 @@ export interface Scratch {
 
 /** Size of a `scratch:` path that does not declare one. */
 export const DEFAULT_SCRATCH_SIZE = "256Mi";
-/** Largest accepted `scratch:` size (1 GiB). */
-export const MAX_SCRATCH_BYTES = 1024 * 1024 * 1024;
 
 /** Declared size, or {@link DEFAULT_SCRATCH_SIZE}. */
 export function scratchSizeOrDefault(s: Scratch): string {
@@ -169,8 +164,6 @@ export function scratchSizeOrDefault(s: Scratch): string {
 
 /** Default generated-secret length in bytes. Hex-encoded, so 48 characters. */
 export const DEFAULT_SECRET_BYTES = 24;
-export const MIN_SECRET_BYTES = 16;
-export const MAX_SECRET_BYTES = 64;
 
 /** An operator-generated secret. */
 export interface SecretDecl {
@@ -189,6 +182,7 @@ export function secretByteLen(s: SecretDecl): number {
 
 /** Secret generation strategy. */
 export type Generate = "password" | "token";
+export const GENERATE_VALUES: ReadonlyArray<Generate> = ["password", "token"];
 export const DEFAULT_GENERATE: Generate = "password";
 
 /** A customer-provided config field (rendered as a form input). */
@@ -206,9 +200,6 @@ export interface ConfigField {
   pattern?: string;
 }
 
-/** Longest accepted `pattern`. */
-export const MAX_PATTERN_LEN = 200;
-
 /** The label a customer sees, falling back to the field name. */
 export function configFieldDisplayLabel(f: ConfigField): string {
   const l = f.label?.trim();
@@ -217,6 +208,7 @@ export function configFieldDisplayLabel(f: ConfigField): string {
 
 /** Config field input type. */
 export type FieldType = "string" | "int" | "bool" | "file";
+export const FIELD_TYPE_VALUES: ReadonlyArray<FieldType> = ["string", "int", "bool", "file"];
 export const DEFAULT_FIELD_TYPE: FieldType = "string";
 
 /** A service's backup method. */

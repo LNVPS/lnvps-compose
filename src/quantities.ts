@@ -1,9 +1,12 @@
 /**
  * Kubernetes-style quantity parsing, matching `lnvps_compose::parse_cpu_milli`
- * and `lnvps_compose::parse_bytes` exactly: same suffixes, same precedence,
- * same rejections. Both throw on a string that Rust's parser would also
- * reject, rather than silently returning zero — a wrong number here is a
- * wrong price or a wrong capacity check, and both are worse than an error.
+ * and `lnvps_compose::parse_bytes`: same suffixes, same precedence, same
+ * rejections on a string either would reject, rather than silently
+ * returning zero — a wrong number here is a wrong price or a wrong capacity
+ * check, and both are worse than an error. `parseQuantityBytes` overflows at
+ * `Number.MAX_SAFE_INTEGER` (~9007 PiB) rather than Rust's `u64::MAX`
+ * (~16 EiB); no real catalog quantity is anywhere near either bound, but the
+ * two are not the same threshold.
  */
 
 /**
@@ -55,5 +58,9 @@ export function parseQuantityBytes(value: string): number {
   }
   const trimmed = num.trim();
   if (!/^\d+$/.test(trimmed)) throw new Error(`invalid size '${value}'`);
-  return Number.parseInt(trimmed, 10) * mult;
+  const n = Number.parseInt(trimmed, 10);
+  if (!Number.isSafeInteger(n)) throw new Error(`size '${value}' overflows`);
+  const result = n * mult;
+  if (!Number.isSafeInteger(result)) throw new Error(`size '${value}' overflows`);
+  return result;
 }
