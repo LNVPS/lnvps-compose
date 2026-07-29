@@ -1,6 +1,6 @@
 {
   "name": "lnvps-compose",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Parser and types for the LNVPS managed-app compose YAML, matching the Rust source of truth in LNVPS/api's lnvps_compose crate.",
   "license": "MIT",
   "type": "module",
