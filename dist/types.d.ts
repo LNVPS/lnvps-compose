@@ -37,6 +37,7 @@ export interface Service {
     /** One-shot containers run to completion, in order, before this service's
      * own container starts. */
     init: Array<InitContainer>;
+    env_from?: string;
 }
 /** A setup step that must succeed before its service's container starts. */
 export interface InitContainer {
@@ -99,6 +100,8 @@ export interface File {
     content?: string;
     /** Name of a `config` field whose value is used as the file content. */
     content_from?: string;
+    merge_from?: string;
+    format?: FileFormat;
     /** Render into a Secret instead of a ConfigMap. */
     sensitive: boolean;
 }
@@ -182,13 +185,27 @@ export interface ConfigField {
     required: boolean;
     /** Regex the submitted value must match in full (issue LNVPS/api#271). */
     pattern?: string;
+    group?: string;
 }
+export declare const MAX_CONFIG_GROUP_LEN = 40;
+export interface ConfigFieldGroups {
+    ungrouped: Array<ConfigField>;
+    groups: Array<{
+        name: string;
+        fields: Array<ConfigField>;
+    }>;
+}
+export declare function groupConfigFields(fields: ReadonlyArray<ConfigField>): ConfigFieldGroups;
 /** Longest accepted `pattern`, in bytes. Long enough for the character-class
  * patterns a catalog field needs (an npub, a domain, a hex key) and short
  * enough that the admin API is not a place to paste a program. */
 export declare const MAX_PATTERN_LEN = 200;
 /** The label a customer sees, falling back to the field name. */
 export declare function configFieldDisplayLabel(f: ConfigField): string;
+export type FileFormat = "yaml" | "toml" | "json";
+export declare const FILE_FORMAT_VALUES: ReadonlyArray<FileFormat>;
+export declare function fileFormatFromPath(path: string): FileFormat | undefined;
+export declare function fileMergeFormat(f: File): FileFormat | undefined;
 /** Config field input type. */
 export type FieldType = "string" | "int" | "bool" | "file";
 export declare const FIELD_TYPE_VALUES: ReadonlyArray<FieldType>;

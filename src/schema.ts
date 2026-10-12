@@ -58,6 +58,7 @@ export function parseComposeSchema(yaml: string): ComposeSchema {
           default: asOptionalString(e.default),
           required: e.required === true,
           pattern: asOptionalString(e.pattern),
+          group: asOptionalString(e.group),
         }))
         .filter((f) => f.name.length > 0)
     : [];

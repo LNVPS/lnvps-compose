@@ -15,7 +15,7 @@
  * rendering) and `volumes()` (server-computed, already served by the API).
  */
 import { parseQuantityBytes } from "./quantities.js";
-import { MAX_PATTERN_LEN, MAX_SCRATCH_BYTES, MAX_SECRET_BYTES, MAX_VOLUME_LABEL_LEN, MIN_SECRET_BYTES, scratchSizeOrDefault, } from "./types.js";
+import { fileMergeFormat, MAX_CONFIG_GROUP_LEN, MAX_PATTERN_LEN, MAX_SCRATCH_BYTES, MAX_SECRET_BYTES, MAX_VOLUME_LABEL_LEN, MIN_SECRET_BYTES, scratchSizeOrDefault, } from "./types.js";
 /** Maximum inline file / ConfigMap content size (well under the k8s ~1 MiB
  * ConfigMap limit). Not part of this package's public API, matching the
  * Rust source's own (non-`pub`) visibility for this constant. */
@@ -129,6 +129,15 @@ export function validateCompose(compose) {
                     throw new Error(`service '${sname}': file '${f.path}' content_from references unknown config field '${f.content_from}'`);
                 }
             }
+            if (f.merge_from !== undefined) {
+                if (f.content === undefined) {
+                    throw new Error(`service '${sname}': file '${f.path}' merge_from needs inline content to merge into`);
+                }
+                requireFileField(compose, sname, `file '${f.path}' merge_from`, f.merge_from);
+                if (fileMergeFormat(f) === undefined) {
+                    throw new Error(`service '${sname}': file '${f.path}' merge_from needs \`format: yaml|toml|json\` (the path has no recognised extension)`);
+                }
+            }
             // A config file must not land inside a read-write data volume.
             for (const v of svc.volumes) {
                 if (f.path === v.path || pathIsWithin(f.path, v.path)) {
@@ -143,6 +152,9 @@ export function validateCompose(compose) {
                     throw new Error(`service '${sname}': file '${f.path}' overlaps scratch path '${s.path}'`);
                 }
             }
+        }
+        if (svc.env_from !== undefined) {
+            requireFileField(compose, sname, "env_from", svc.env_from);
         }
         // A backup entry is exactly one of command | volume.
         if (svc.backup !== undefined) {
@@ -215,6 +227,21 @@ export function validateCompose(compose) {
                 throw new Error(`config field '${f.name}': ${e.message}`);
             }
         }
+        if (f.group !== undefined) {
+            const group = f.group.trim();
+            if (group.length === 0 || [...group].length > MAX_CONFIG_GROUP_LEN) {
+                throw new Error(`config field '${f.name}': group must be 1-${MAX_CONFIG_GROUP_LEN} characters`);
+            }
+        }
+    }
+}
+function requireFileField(compose, service, context, field) {
+    const c = compose.config.find((cf) => cf.name === field);
+    if (c === undefined) {
+        throw new Error(`service '${service}': ${context} references unknown config field '${field}'`);
+    }
+    if (c.type !== "file") {
+        throw new Error(`service '${service}': ${context} field '${field}' must be \`type: file\``);
     }
 }
 /** Whether a compose `user:` value means "start as root". */

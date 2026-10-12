@@ -39,6 +39,7 @@ export interface Service {
   /** One-shot containers run to completion, in order, before this service's
    * own container starts. */
   init: Array<InitContainer>;
+  env_from?: string;
 }
 
 /** A setup step that must succeed before its service's container starts. */
@@ -108,6 +109,8 @@ export interface File {
   content?: string;
   /** Name of a `config` field whose value is used as the file content. */
   content_from?: string;
+  merge_from?: string;
+  format?: FileFormat;
   /** Render into a Secret instead of a ConfigMap. */
   sensitive: boolean;
 }
@@ -209,6 +212,30 @@ export interface ConfigField {
   required: boolean;
   /** Regex the submitted value must match in full (issue LNVPS/api#271). */
   pattern?: string;
+  group?: string;
+}
+
+export const MAX_CONFIG_GROUP_LEN = 40;
+
+export interface ConfigFieldGroups {
+  ungrouped: Array<ConfigField>;
+  groups: Array<{ name: string; fields: Array<ConfigField> }>;
+}
+
+export function groupConfigFields(fields: ReadonlyArray<ConfigField>): ConfigFieldGroups {
+  const ungrouped: Array<ConfigField> = [];
+  const groups: Array<{ name: string; fields: Array<ConfigField> }> = [];
+  for (const f of fields) {
+    const name = f.group?.trim();
+    if (!name) {
+      ungrouped.push(f);
+      continue;
+    }
+    const existing = groups.find((g) => g.name === name);
+    if (existing) existing.fields.push(f);
+    else groups.push({ name, fields: [f] });
+  }
+  return { ungrouped, groups };
 }
 
 /** Longest accepted `pattern`, in bytes. Long enough for the character-class
@@ -220,6 +247,29 @@ export const MAX_PATTERN_LEN = 200;
 export function configFieldDisplayLabel(f: ConfigField): string {
   const l = f.label?.trim();
   return l ? f.label! : f.name;
+}
+
+export type FileFormat = "yaml" | "toml" | "json";
+export const FILE_FORMAT_VALUES: ReadonlyArray<FileFormat> = ["yaml", "toml", "json"];
+
+export function fileFormatFromPath(path: string): FileFormat | undefined {
+  const dot = path.lastIndexOf(".");
+  if (dot < 0) return undefined;
+  switch (path.slice(dot + 1).toLowerCase()) {
+    case "yaml":
+    case "yml":
+      return "yaml";
+    case "toml":
+      return "toml";
+    case "json":
+      return "json";
+    default:
+      return undefined;
+  }
+}
+
+export function fileMergeFormat(f: File): FileFormat | undefined {
+  return f.format ?? fileFormatFromPath(f.path);
 }
 
 /** Config field input type. */

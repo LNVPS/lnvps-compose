@@ -67,4 +67,13 @@ secrets:
     expect(config[0]!.type).toBe("string");
     expect(secrets[0]!.generate).toBe("password");
   });
+
+  test("reads a field's group", () => {
+    const { config } = parseComposeSchema(`
+config:
+  - { name: a, group: Limits }
+  - { name: b }
+`);
+    expect(config.map((f) => f.group)).toEqual(["Limits", undefined]);
+  });
 });

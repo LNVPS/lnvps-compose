@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { parseCompose } from "../src/parse";
 import {
+  MAX_CONFIG_GROUP_LEN,
   MAX_PATTERN_LEN,
   MAX_SECRET_BYTES,
   MAX_VOLUME_LABEL_LEN,
@@ -747,5 +748,58 @@ config:
   - { name: o, type: string, pattern: "(?<year>[0-9]{4})" }
 `),
     ).not.toThrow();
+  });
+});
+
+describe("validateCompose: config overrides and groups", () => {
+  const doc = (svc: string, config: string) =>
+    `services:\n  a:\n    image: x\n${svc}config:\n${config}`;
+
+  test.each([
+    ["    env_from: nope\n", "  - { name: s, type: file }\n", "env_from references unknown config field 'nope'"],
+    ["    env_from: s\n", "  - { name: s, type: string }\n", "env_from field 's' must be `type: file`"],
+    [
+      "    files:\n      - { path: /c.yml, content: 'a: 1', merge_from: nope }\n",
+      "  - { name: s, type: file }\n",
+      "merge_from references unknown config field 'nope'",
+    ],
+    [
+      "    files:\n      - { path: /c.yml, content: 'a: 1', merge_from: s }\n",
+      "  - { name: s, type: int }\n",
+      "must be `type: file`",
+    ],
+    [
+      "    files:\n      - { path: /c.yml, content_from: s, merge_from: s }\n",
+      "  - { name: s, type: file }\n",
+      "merge_from needs inline content",
+    ],
+    [
+      "    files:\n      - { path: /c.conf, content: 'a: 1', merge_from: s }\n",
+      "  - { name: s, type: file }\n",
+      "needs `format: yaml|toml|json`",
+    ],
+  ])("rejects %#", (svc, config, message) => {
+    expect(() => parseCompose(doc(svc, config))).toThrow(message);
+  });
+
+  test("accepts overrides with an inferred or explicit format", () => {
+    const c = parseCompose(
+      doc(
+        "    env_from: s\n    files:\n      - { path: /c.yml, content: 'a: 1', merge_from: s }\n      - { path: /c.conf, content: 'a = 1', merge_from: s, format: toml }\n",
+        "  - { name: s, type: file }\n",
+      ),
+    );
+    expect(c.services.a!.env_from).toBe("s");
+  });
+
+  test("rejects a blank or overlong group", () => {
+    for (const group of ["''", "'  '", "x".repeat(MAX_CONFIG_GROUP_LEN + 1)]) {
+      expect(() => parseCompose(doc("", `  - { name: s, group: ${group} }\n`))).toThrow(
+        "group must be 1-40 characters",
+      );
+    }
+    expect(parseCompose(doc("", "  - { name: s, group: Limits }\n")).config[0]!.group).toBe(
+      "Limits",
+    );
   });
 });

@@ -170,4 +170,38 @@ config:
 `),
     ).toThrow(/config\[0\]\.default/);
   });
+
+  test("parses config groups and config overrides", () => {
+    const c = parseCompose(`
+services:
+  app:
+    image: example/app
+    env_from: extra_env
+    files:
+      - { path: /app/config.yml, content: "a: 1", merge_from: overrides }
+      - { path: /app/settings, content: "{}", merge_from: json, format: json }
+config:
+  - { name: overrides, type: file, group: Advanced }
+  - { name: json, type: file, group: Advanced }
+  - { name: extra_env, type: file }
+`);
+    const app = c.services.app!;
+    expect(app.env_from).toBe("extra_env");
+    expect(app.files[0]!.merge_from).toBe("overrides");
+    expect(app.files[0]!.format).toBeUndefined();
+    expect(app.files[1]!.format).toBe("json");
+    expect(c.config.map((f) => f.group)).toEqual(["Advanced", "Advanced", undefined]);
+  });
+
+  test("rejects an unknown file format", () => {
+    expect(() =>
+      parseCompose(`
+services:
+  app:
+    image: example/app
+    files:
+      - { path: /app/c.conf, content: "x", merge_from: o, format: ini }
+`),
+    ).toThrow(/files\[0\]\.format/);
+  });
 });

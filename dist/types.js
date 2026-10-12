@@ -34,6 +34,24 @@ export function secretByteLen(s) {
 }
 export const GENERATE_VALUES = ["password", "token"];
 export const DEFAULT_GENERATE = "password";
+export const MAX_CONFIG_GROUP_LEN = 40;
+export function groupConfigFields(fields) {
+    const ungrouped = [];
+    const groups = [];
+    for (const f of fields) {
+        const name = f.group?.trim();
+        if (!name) {
+            ungrouped.push(f);
+            continue;
+        }
+        const existing = groups.find((g) => g.name === name);
+        if (existing)
+            existing.fields.push(f);
+        else
+            groups.push({ name, fields: [f] });
+    }
+    return { ungrouped, groups };
+}
 /** Longest accepted `pattern`, in bytes. Long enough for the character-class
  * patterns a catalog field needs (an npub, a domain, a hex key) and short
  * enough that the admin API is not a place to paste a program. */
@@ -42,6 +60,26 @@ export const MAX_PATTERN_LEN = 200;
 export function configFieldDisplayLabel(f) {
     const l = f.label?.trim();
     return l ? f.label : f.name;
+}
+export const FILE_FORMAT_VALUES = ["yaml", "toml", "json"];
+export function fileFormatFromPath(path) {
+    const dot = path.lastIndexOf(".");
+    if (dot < 0)
+        return undefined;
+    switch (path.slice(dot + 1).toLowerCase()) {
+        case "yaml":
+        case "yml":
+            return "yaml";
+        case "toml":
+            return "toml";
+        case "json":
+            return "json";
+        default:
+            return undefined;
+    }
+}
+export function fileMergeFormat(f) {
+    return f.format ?? fileFormatFromPath(f.path);
 }
 export const FIELD_TYPE_VALUES = ["string", "int", "bool", "file"];
 export const DEFAULT_FIELD_TYPE = "string";

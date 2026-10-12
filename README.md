@@ -62,6 +62,10 @@ import {
   missing either key, returns empty lists rather than throwing. Replaces
   web's `parseAppConfig` and admin's `parseComposeSchema`.
 
+- **`groupConfigFields(fields): { ungrouped, groups }`**: splits the form's
+  fields by their `group`, keeping declaration order, so a form can show the
+  ungrouped fields first and each named group as its own section.
+
 - **`parseComposeFootprint(yaml: string): { total, services }`** — resource
   footprint, matching `Compose::footprint`/`service_footprints`: CPU/memory
   summed across services (an `init:` step counted only when it asks for more

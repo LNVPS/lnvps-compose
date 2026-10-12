@@ -5,6 +5,7 @@ import type {
   ConfigField,
   Expose,
   FieldType,
+  FileFormat,
   File,
   Generate,
   InitContainer,
@@ -25,6 +26,7 @@ import {
   DEFAULT_MEMORY,
   DEFAULT_PROTOCOL,
   FIELD_TYPE_VALUES,
+  FILE_FORMAT_VALUES,
   GENERATE_VALUES,
 } from "./types.js";
 
@@ -178,6 +180,7 @@ function readService(raw: unknown, ctx: string): Service {
     backup: obj.backup == null ? undefined : readBackup(obj.backup, `${ctx}.backup`),
     user: optString(obj, "user", ctx),
     init: optArray(obj, "init", ctx).map((v, i) => readInitContainer(v, `${ctx}.init[${i}]`)),
+    env_from: optString(obj, "env_from", ctx),
   };
 }
 
@@ -211,6 +214,11 @@ function readFile(raw: unknown, ctx: string): File {
     path: reqString(obj, "path", ctx),
     content: optString(obj, "content", ctx),
     content_from: optString(obj, "content_from", ctx),
+    merge_from: optString(obj, "merge_from", ctx),
+    format:
+      obj.format == null
+        ? undefined
+        : enumValue<FileFormat>(obj, "format", FILE_FORMAT_VALUES, "yaml", ctx),
     sensitive: optBool(obj, "sensitive", false),
   };
 }
@@ -265,6 +273,7 @@ function readConfigField(raw: unknown, ctx: string): ConfigField {
     default: optString(obj, "default", ctx),
     required: optBool(obj, "required", false),
     pattern: optString(obj, "pattern", ctx),
+    group: optString(obj, "group", ctx),
   };
 }
 

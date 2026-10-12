@@ -1,6 +1,6 @@
 import { parse as parseYaml } from "yaml";
 import { validateCompose } from "./validate.js";
-import { DEFAULT_CPU, DEFAULT_EXPOSE, DEFAULT_FIELD_TYPE, DEFAULT_GENERATE, DEFAULT_MEMORY, DEFAULT_PROTOCOL, FIELD_TYPE_VALUES, GENERATE_VALUES, } from "./types.js";
+import { DEFAULT_CPU, DEFAULT_EXPOSE, DEFAULT_FIELD_TYPE, DEFAULT_GENERATE, DEFAULT_MEMORY, DEFAULT_PROTOCOL, FIELD_TYPE_VALUES, FILE_FORMAT_VALUES, GENERATE_VALUES, } from "./types.js";
 /**
  * Parse an app compose document from YAML into its typed shape.
  *
@@ -142,6 +142,7 @@ function readService(raw, ctx) {
         backup: obj.backup == null ? undefined : readBackup(obj.backup, `${ctx}.backup`),
         user: optString(obj, "user", ctx),
         init: optArray(obj, "init", ctx).map((v, i) => readInitContainer(v, `${ctx}.init[${i}]`)),
+        env_from: optString(obj, "env_from", ctx),
     };
 }
 function readInitContainer(raw, ctx) {
@@ -172,6 +173,10 @@ function readFile(raw, ctx) {
         path: reqString(obj, "path", ctx),
         content: optString(obj, "content", ctx),
         content_from: optString(obj, "content_from", ctx),
+        merge_from: optString(obj, "merge_from", ctx),
+        format: obj.format == null
+            ? undefined
+            : enumValue(obj, "format", FILE_FORMAT_VALUES, "yaml", ctx),
         sensitive: optBool(obj, "sensitive", false),
     };
 }
@@ -220,6 +225,7 @@ function readConfigField(raw, ctx) {
         default: optString(obj, "default", ctx),
         required: optBool(obj, "required", false),
         pattern: optString(obj, "pattern", ctx),
+        group: optString(obj, "group", ctx),
     };
 }
 function readBackup(raw, ctx) {
