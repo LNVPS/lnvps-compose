@@ -203,16 +203,38 @@ export function validateCompose(compose: Compose): void {
       requireFileField(compose, sname, "env_from", svc.env_from);
     }
 
-    // A backup entry is exactly one of command | volume.
     if (svc.backup !== undefined) {
       const b = svc.backup;
+      const methods = [b.command, b.volume, b.exec].filter((m) => m !== undefined).length;
       if (b.command !== undefined && b.volume !== undefined) {
         throw new Error(`service '${sname}': backup has both command and volume`);
-      } else if (b.command === undefined && b.volume === undefined) {
-        throw new Error(`service '${sname}': backup needs either command or volume`);
-      } else if (b.volume !== undefined) {
-        if (!svc.volumes.some((v) => v.name === b.volume)) {
-          throw new Error(`service '${sname}': backup volume '${b.volume}' is not declared`);
+      }
+      if (methods > 1) {
+        throw new Error(
+          `service '${sname}': backup declares more than one of command, volume and exec`,
+        );
+      }
+      if (methods === 0) {
+        throw new Error(`service '${sname}': backup needs one of command, volume or exec`);
+      }
+      if (b.volume !== undefined && !svc.volumes.some((v) => v.name === b.volume)) {
+        throw new Error(`service '${sname}': backup volume '${b.volume}' is not declared`);
+      }
+      if (b.quiesce && b.volume === undefined) {
+        throw new Error(
+          `service '${sname}': backup \`quiesce\` only applies to a \`volume:\` backup, ` +
+            `which is the method that copies files the app is writing`,
+        );
+      }
+      if (b.exec !== undefined) {
+        if (b.exec.length === 0) {
+          throw new Error(`service '${sname}': backup exec is empty`);
+        }
+        if (b.exec.some((a) => /\$\{[^}]*\}/.test(a))) {
+          throw new Error(
+            `service '${sname}': backup exec must not contain '\${…}': it runs ` +
+              `inside the customer's container as written`,
+          );
         }
       }
     }

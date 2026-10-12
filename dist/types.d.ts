@@ -216,6 +216,8 @@ export interface Backup {
     command?: Array<string>;
     /** Alternatively, raw tar of this named volume (append-only data only). */
     volume?: string;
+    exec?: Array<string>;
+    quiesce: boolean;
     /** Suggested artifact filename. */
     artifact?: string;
 }

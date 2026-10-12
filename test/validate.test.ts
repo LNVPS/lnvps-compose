@@ -435,7 +435,7 @@ services:
     image: x
     backup: {}
 `),
-    ).toThrow("needs either command or volume");
+    ).toThrow("needs one of command, volume or exec");
   });
 
   test("rejects a backup volume that is not declared", () => {
@@ -801,5 +801,27 @@ describe("validateCompose: config overrides and groups", () => {
     expect(parseCompose(doc("", "  - { name: s, group: Limits }\n")).config[0]!.group).toBe(
       "Limits",
     );
+  });
+});
+
+describe("validateCompose: exec and quiesce backups", () => {
+  const svc = (backup: string) =>
+    `services:\n  a:\n    image: x\n    user: "1000"\n    volumes:\n      - { name: d, path: /d, size: 1Gi }\n    backup: ${backup}\n`;
+
+  test.each([
+    ['{ exec: ["x"], volume: d }', "more than one of command, volume and exec"],
+    ['{ exec: [] }', "backup exec is empty"],
+    ['{ exec: ["echo", "${X}"] }', "must not contain"],
+    ['{ exec: ["x"], quiesce: true }', "only applies to a `volume:` backup"],
+  ])("rejects %s", (backup, message) => {
+    expect(() => parseCompose(svc(backup))).toThrow(message);
+  });
+
+  test("accepts an exec backup and a quiesced volume backup", () => {
+    const exec = parseCompose(svc('{ exec: ["/app/strfry", "export"] }'));
+    expect(exec.services.a!.backup!.exec).toEqual(["/app/strfry", "export"]);
+    expect(exec.services.a!.backup!.quiesce).toBe(false);
+    const quiet = parseCompose(svc("{ volume: d, quiesce: true }"));
+    expect(quiet.services.a!.backup!.quiesce).toBe(true);
   });
 });

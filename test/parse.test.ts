@@ -35,7 +35,13 @@ describe("parseCompose", () => {
     expect(route96.depends_on).toEqual(["db"]);
     expect(route96.ports[0]).toMatchObject({ expose: "ingress", protocol: "http" });
     expect(route96.files[0]?.path).toBe("/app/config.yaml");
-    expect(route96.backup).toEqual({ command: undefined, volume: "blobs", artifact: undefined });
+    expect(route96.backup).toEqual({
+      command: undefined,
+      volume: "blobs",
+      exec: undefined,
+      quiesce: false,
+      artifact: undefined,
+    });
   });
 
   test("defaults resources when a service omits them", () => {

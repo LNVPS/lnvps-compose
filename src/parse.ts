@@ -282,6 +282,8 @@ function readBackup(raw: unknown, ctx: string): Backup {
   return {
     command: obj.command == null ? undefined : optStringArray(obj, "command", ctx),
     volume: optString(obj, "volume", ctx),
+    exec: obj.exec == null ? undefined : optStringArray(obj, "exec", ctx),
+    quiesce: optBool(obj, "quiesce", false),
     artifact: optString(obj, "artifact", ctx),
   };
 }
